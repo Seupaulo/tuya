@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel IoT Tuya</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; max-width: 350px; width: 100%; }
+        h1 { color: #ff5500; font-size: 22px; margin-bottom: 20px; }
+        .status { font-size: 14px; color: #666; margin-bottom: 20px; font-weight: bold; }
+        .btn-group { display: flex; gap: 15px; }
+        button { flex: 1; border: none; padding: 15px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; color: white; transition: 0.2s; }
+        button:disabled { background: #ccc !important; cursor: not-allowed; }
+        .btn-on { background: #4caf50; }
+        .btn-on:hover { background: #43a047; }
+        .btn-off { background: #f44336; }
+        .btn-off:hover { background: #e53935; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>Controle Tuya IoT</h1>
+    <div id="status" class="status">Aguardando comando...</div>
+    <div class="btn-group">
+        <button id="btn-on" class="btn-on" onclick="controlar(true)">LIGAR</button>
+        <button id="btn-off" class="btn-off" onclick="controlar(false)">DESLIGAR</button>
+    </div>
+</div>
+
+<script>
+    // Como o site e a API estarão na mesma plataforma Vercel, basta usar a rota relativa!
+    const API_URL = '/api/control';
+
+    async function controlar(status) {
+        const btnOn = document.getElementById('btn-on');
+        const btnOff = document.getElementById('btn-off');
+        const txtStatus = document.getElementById('status');
+
+        btnOn.disabled = true;
+        btnOff.disabled = true;
+        txtStatus.innerText = 'Enviando comando...';
+
+        try {
+            const res = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                txtStatus.style.color = status ? '#4caf50' : '#f44336';
+                txtStatus.innerText = `Dispositivo ${status ? 'LIGADO' : 'DESLIGADO'} com sucesso!`;
+            } else {
+                txtStatus.style.color = '#ff9800';
+                txtStatus.innerText = `Erro: ${data.message}`;
+            }
+        } catch (err) {
+            txtStatus.style.color = '#f44336';
+            txtStatus.innerText = 'Falha na conexão de rede.';
+        } finally {
+            btnOn.disabled = false;
+            btnOff.disabled = false;
+        }
+    }
+</script>
+</body>
+</html>
