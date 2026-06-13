@@ -80,22 +80,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             };
         } 
         else if (target === 'portao') {
-            // O comando de RF deve ser enviado para o Hub Pai (EKAZA)
+            // O comando vai para o Hub EKAZA Pai
             path = `/v1.0/devices/${TUYA_DEVICE_RF_ID}/commands`;
             
             const keyId = KEY_MAP[action] || '1';
             
-            // Monta a string de comando oficial de RF baseada no ID do sub-dispositivo
+            // Nova estrutura corrigida: Envia tanto o mapeamento clássico quanto o estendido 
+            // para cobrir todas as variações de firmware de gateways RF da Tuya.
             const rfValueObj = {
                 control: "rf_send",
                 sub_id: TUYA_SUB_PORTAO_ID,
+                device_id: TUYA_SUB_PORTAO_ID,
+                received_id: TUYA_SUB_PORTAO_ID,
                 key_id: keyId
             };
 
             body = {
                 commands: [{ 
                     code: 'ir_send', 
-                    value: JSON.stringify(rfValueObj) 
+                    value: JSON.stringify(rfValueObj)
                 }]
             };
         } else {
@@ -122,7 +125,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (response.data && response.data.success) {
             return res.status(200).json({ success: true });
         } else {
-            return res.status(500).json({ success: false, message: `Erro Tuya: ${response.data.msg} (Código: ${response.data.code})` });
+            return res.status(500).json({ 
+                success: false, 
+                message: `Erro Tuya ${response.data.code}: ${response.data.msg}` 
+            });
         }
     } catch (error: any) {
         return res.status(500).json({ success: false, message: error.message });
