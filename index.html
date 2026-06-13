@@ -2,67 +2,107 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel IoT Tuya</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Painel de Controle IoT</title>
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; max-width: 350px; width: 100%; }
-        h1 { color: #ff5500; font-size: 22px; margin-bottom: 20px; }
-        .status { font-size: 14px; color: #666; margin-bottom: 20px; font-weight: bold; }
-        .btn-group { display: flex; gap: 15px; }
-        button { flex: 1; border: none; padding: 15px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; color: white; transition: 0.2s; }
-        button:disabled { background: #ccc !important; cursor: not-allowed; }
-        .btn-on { background: #4caf50; }
-        .btn-on:hover { background: #43a047; }
-        .btn-off { background: #f44336; }
-        .btn-off:hover { background: #e53935; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .container { width: 100%; max-width: 420px; }
+        .card { background: #ffffff; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.04); margin-bottom: 20px; }
+        h1 { color: #ff5500; font-size: 22px; font-weight: 700; margin-bottom: 5px; text-align: center; }
+        .subtitle { font-size: 13px; color: #888; margin-bottom: 20px; text-align: center; }
+        h2 { font-size: 16px; color: #333; margin-bottom: 15px; font-weight: 600; text-align: left; border-left: 4px solid #ff5500; padding-left: 8px; }
+        .status-box { background: #fafafa; border: 1px solid #eee; padding: 12px; border-radius: 10px; font-size: 14px; color: #444; margin-bottom: 20px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .status-dot { width: 8px; height: 8px; background-color: #ccc; border-radius: 50%; }
+        .btn-group { display: flex; gap: 12px; }
+        .grid-2x2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        button { width: 100%; border: none; padding: 16px; font-size: 15px; font-weight: 700; border-radius: 12px; cursor: pointer; color: white; transition: 0.1s; -webkit-tap-highlight-color: transparent; }
+        button:active { transform: scale(0.98); }
+        button:disabled { background: #dcdcdc !important; color: #999; cursor: not-allowed; transform: none; box-shadow: none !important; }
+        .btn-on { background: #2ecc71; box-shadow: 0 4px 12px rgba(46, 204, 113, 0.15); }
+        .btn-off { background: #e74c3c; box-shadow: 0 4px 12px rgba(231, 76, 60, 0.15); }
+        .btn-blue { background: #3498db; box-shadow: 0 4px 12px rgba(52, 152, 219, 0.15); }
+        .btn-orange { background: #f39c12; box-shadow: 0 4px 12px rgba(243, 156, 18, 0.15); }
+        .btn-grey { background: #7f8c8d; box-shadow: 0 4px 12px rgba(127, 140, 141, 0.15); }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h1>Controle Tuya IoT</h1>
-    <div id="status" class="status">Aguardando comando...</div>
-    <div class="btn-group">
-        <button id="btn-on" class="btn-on" onclick="controlar(true)">LIGAR</button>
-        <button id="btn-off" class="btn-off" onclick="controlar(false)">DESLIGAR</button>
+<div class="container">
+    <h1>Tuya Home Control</h1>
+    <p class="subtitle">Acesso Remoto Multi-plataforma</p>
+    
+    <div class="card">
+        <h2>Central de Alarme</h2>
+        <div class="status-box">
+            <div id="alarme-dot" class="status-dot"></div>
+            <span id="alarme-status">Pronto</span>
+        </div>
+        <div class="btn-group">
+            <button id="btn-arm" class="btn-on" onclick="comandar('alarme', 'ligar')">ARM</button>
+            <button id="btn-disarm" class="btn-off" onclick="comandar('alarme', 'desligar')">DESARMAR</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Portão da Garagem</h2>
+        <div class="status-box">
+            <div id="portao-dot" class="status-dot"></div>
+            <span id="portao-status">Aguardando comando</span>
+        </div>
+        <div class="grid-2x2">
+            <button id="btn-abrir" class="btn-blue" onclick="comandar('portao', 'abrir')">ABRIR</button>
+            <button id="btn-fechar" class="btn-orange" onclick="comandar('portao', 'fechar')">FECHAR</button>
+            <button id="btn-parar" class="btn-grey" onclick="comandar('portao', 'parar')">PARAR</button>
+            <button id="btn-travar" class="btn-off" onclick="comandar('portao', 'travar')">TRAVAR</button>
+        </div>
     </div>
 </div>
 
 <script>
-    // Como o site e a API estarão na mesma plataforma Vercel, basta usar a rota relativa!
     const API_URL = '/api/control';
 
-    async function controlar(status) {
-        const btnOn = document.getElementById('btn-on');
-        const btnOff = document.getElementById('btn-off');
-        const txtStatus = document.getElementById('status');
+    async function comandar(target, action) {
+        const botoes = document.querySelectorAll('button');
+        const txtStatus = document.getElementById(`${target}-status`);
+        const dot = document.getElementById(`${target}-dot`);
 
-        btnOn.disabled = true;
-        btnOff.disabled = true;
-        txtStatus.innerText = 'Enviando comando...';
+        // Bloqueia temporariamente todos os botões para evitar duplo clique
+        botoes.forEach(btn => btn.disabled = true);
+        
+        const textoOriginalAlarme = txtStatus.innerText;
+        txtStatus.innerText = 'Enviando sinal...';
+        dot.style.background = '#f1c40f'; // Amarelo
 
         try {
             const res = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status })
+                body: JSON.stringify({ target, action })
             });
             const data = await res.json();
 
             if (res.ok && data.success) {
-                txtStatus.style.color = status ? '#4caf50' : '#f44336';
-                txtStatus.innerText = `Dispositivo ${status ? 'LIGADO' : 'DESLIGADO'} com sucesso!`;
+                if (target === 'alarme') {
+                    txtStatus.innerText = action === 'ligar' ? 'Alarme Armado' : 'Alarme Desarmado';
+                    dot.style.background = action === 'ligar' ? '#2ecc71' : '#e74c3c';
+                } else {
+                    txtStatus.innerText = `Sinal [${action.toUpperCase()}] Enviado!`;
+                    dot.style.background = '#3498db';
+                    setTimeout(() => {
+                        txtStatus.innerText = 'Aguardando comando';
+                        dot.style.background = '#ccc';
+                    }, 2500);
+                }
             } else {
-                txtStatus.style.color = '#ff9800';
-                txtStatus.innerText = `Erro: ${data.message}`;
+                txtStatus.innerText = `Erro: ${data.message || 'Falha'}`;
+                dot.style.background = '#7f8c8d';
             }
         } catch (err) {
-            txtStatus.style.color = '#f44336';
-            txtStatus.innerText = 'Falha na conexão de rede.';
+            txtStatus.innerText = 'Falha de rede.';
+            dot.style.background = '#7f8c8d';
         } finally {
-            btnOn.disabled = false;
-            btnOff.disabled = false;
+            botoes.forEach(btn => btn.disabled = false);
         }
     }
 </script>
