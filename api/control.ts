@@ -24,9 +24,18 @@ function getContentHash(body: any): string {
     return crypto.createHash('sha256').update(JSON.stringify(body), 'utf8').digest('hex');
 }
 
-function buildStringToSign(method: string, path: string, body: any = {}): string {
+function buildStringToSign(method: string, path: string, query: Record<string, any> = {}, body: any = {}): string {
+    const httpMethod = method.toUpperCase();
     const contentHash = getContentHash(body);
-    return `${method.toUpperCase()}\n${contentHash}\n\n${path}`;
+    
+    let sortedQueryStr = '';
+    const queryKeys = Object.keys(query).sort();
+    if (queryKeys.length > 0) {
+        sortedQueryStr = queryKeys.map((key) => `${key}=${query[key]}`).join('&');
+    }
+    
+    const url = sortedQueryStr ? `${path}?${sortedQueryStr}` : path;
+    return `${httpMethod}\n${contentHash}\n\n${url}`;
 }
 
 function generateSignature(clientId: string, token: string, timestamp: number, nonce: string, stringToSign: string): string {
@@ -69,6 +78,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
         const token = await getAccessToken();
+        let method: 'GET' | 'POST' = 'POST';
         let path = '';
         let body = {};
 
@@ -80,37 +90,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             };
         } 
         else if (target === 'portao') {
-            // O comando vai para o Hub EKAZA Pai
-            path = `/v1.0/devices/${TUYA_DEVICE_RF_ID}/commands`;
-            
             const keyId = KEY_MAP[action] || '1';
             
-            // Nova estrutura corrigida: Envia tanto o mapeamento clássico quanto o estendido 
-            // para cobrir todas as variações de firmware de gateways RF da Tuya.
-            const rfValueObj = {
-                control: "rf_send",
-                sub_id: TUYA_SUB_PORTAO_ID,
-                device_id: TUYA_SUB_PORTAO_ID,
-                received_id: TUYA_SUB_PORTAO_ID,
-                key_id: keyId
-            };
-
-            body = {
-                commands: [{ 
-                    code: 'ir_send', 
-                    value: JSON.stringify(rfValueObj)
-                }]
-            };
+            // ROTA NATIVA DA TUYA PARA TRANSMISSÃO REMOTA DE RF (v2.0)
+            method = 'POST';
+            path = `/v1.0/ir-remotes/${TUYA_DEVICE_RF_ID}/rf/${TUYA_SUB_PORTAO_ID}/keys/${keyId}/transmission`;
+            body = {}; // Este endpoint da Tuya trabalha com o corpo vazio, passando os dados na URL
         } else {
             return res.status(400).json({ success: false, message: 'Alvo inválido.' });
         }
 
         const timestamp = Date.now();
         const nonce = crypto.randomBytes(8).toString('hex');
-        const stringToSign = buildStringToSign('POST', path, body);
+        
+        // Passamos o body vazio para o cálculo da assinatura caso seja o portão
+        const stringToSign = buildStringToSign(method, path, {}, body);
         const signature = generateSignature(TUYA_ACCESS_ID, token, timestamp, nonce, stringToSign);
 
-        const response = await axios.post(`${TUYA_ENDPOINT}${path}`, body, {
+        const response = await axios({
+            method: method,
+            url: `${TUYA_ENDPOINT}${path}`,
+            data: body,
             headers: {
                 client_id: TUYA_ACCESS_ID,
                 access_token: token,
