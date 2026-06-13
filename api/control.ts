@@ -2,11 +2,10 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 import * as crypto from 'crypto';
 
-// Configurações extraídas de forma segura das Variáveis de Ambiente da Vercel
 const TUYA_ACCESS_ID = process.env.TUYA_ACCESS_ID || '';
 const TUYA_ACCESS_SECRET = process.env.TUYA_ACCESS_SECRET || '';
 const TUYA_DEVICE_ID = process.env.TUYA_DEVICE_ID || '';
-const TUYA_ENDPOINT = 'https://openapi.tuyaus.com'; // Altere se o seu Data Center for EU ou CN
+const TUYA_ENDPOINT = 'https://openapi.tuyaus.com';
 
 function getContentHash(body: any): string {
     if (!body || Object.keys(body).length === 0) {
@@ -45,28 +44,19 @@ async function getAccessToken(): Promise<string> {
     if (response.data && response.data.success) {
         return response.data.result.access_token;
     }
-    throw new Error(`Erro de autenticação na Tuya: ${response.data.msg}`);
+    throw new Error(`Erro na Autenticação Tuya: ${response.data.msg}`);
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-    // Configuração do CORS para permitir que o seu frontend acione a função
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-    res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+    res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
+    if (req.method === 'OPTIONS') return res.status(200).end();
+    if (req.method !== 'POST') return res.status(405).json({ success: false, message: 'Método não permitido.' });
 
-    if (req.method !== 'POST') {
-        return res.status(405).json({ success: false, message: 'Método não permitido. Use POST.' });
-    }
-
-    const { status } = req.body;
-    if (typeof status !== 'boolean') {
-        return res.status(400).json({ success: false, message: 'O parâmetro "status" deve ser booleano.' });
-    }
+    const { status } = req.body; // true para armar, false para desarmar
+    if (typeof status !== 'boolean') return res.status(400).json({ success: false, message: 'Status inválido.' });
 
     try {
         const token = await getAccessToken();
@@ -74,11 +64,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const timestamp = Date.now();
         const nonce = crypto.randomBytes(8).toString('hex');
 
+        // Configuração exata baseada nos parâmetros do seu alarme:
+        // Se clicar em LIGAR (status true) -> envia 'arm'
+        // Se clicar em DESLIGAR (status false) -> envia 'disarmed'
+        const comandoAlarme = status ? 'arm' : 'disarmed';
+
         const body = {
             commands: [
-                {
-                    code: 'switch_1', // Verifique no painel Tuya se o seu código é switch, switch_1 ou power
-                    value: status
+                { 
+                    code: 'master_mode', 
+                    value: comandoAlarme 
                 }
             ]
         };
@@ -99,11 +94,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
 
         if (response.data && response.data.success) {
-            return res.status(200).json({ success: true, result: response.data.result });
+            return res.status(200).json({ success: true });
         } else {
-            return res.status(500).json({ success: false, message: `Erro Tuya: ${response.data.msg}` });
+            return res.status(500).json({ 
+                success: false, 
+                message: `Erro Tuya ${response.data.code}: ${response.data.msg}` 
+            });
         }
-
     } catch (error: any) {
         return res.status(500).json({ success: false, message: error.message });
     }
