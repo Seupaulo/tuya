@@ -4,7 +4,17 @@ import * as crypto from 'crypto';
 
 const TUYA_ACCESS_ID = process.env.TUYA_ACCESS_ID || '';
 const TUYA_ACCESS_SECRET = process.env.TUYA_ACCESS_SECRET || '';
-const TUYA_DEVICE_ID = process.env.TUYA_DEVICE_ID || '';
+const TUYA_DEVICE_ID = process.env.TUYA_DEVICE_ID || ''; // Alarme
+const TUYA_DEVICE_RF_ID = process.env.TUYA_DEVICE_RF_ID || ''; // Hub EKAZA Pai
+const TUYA_SUB_PORTAO_ID = process.env.TUYA_SUB_PORTAO_ID || ''; // Controle Virtual Filho
+
+const KEY_MAP: Record<string, string> = {
+    abrir: process.env.KEY_PORTAO_ABRIR || '1',
+    fechar: process.env.KEY_PORTAO_FECHAR || '2',
+    parar: process.env.KEY_PORTAO_PARAR || '3',
+    travar: process.env.KEY_PORTAO_TRAVAR || '4'
+};
+
 const TUYA_ENDPOINT = 'https://openapi.tuyaus.com';
 
 function getContentHash(body: any): string {
@@ -55,29 +65,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ success: false, message: 'Método não permitido.' });
 
-    const { status } = req.body; // true para armar, false para desarmar
-    if (typeof status !== 'boolean') return res.status(400).json({ success: false, message: 'Status inválido.' });
+    const { target, action } = req.body; 
 
     try {
         const token = await getAccessToken();
-        const path = `/v1.0/devices/${TUYA_DEVICE_ID}/commands`;
+        let path = '';
+        let body = {};
+
+        if (target === 'alarme') {
+            path = `/v1.0/devices/${TUYA_DEVICE_ID}/commands`;
+            const comandoAlarme = action === 'ligar' ? 'arm' : 'disarmed';
+            body = {
+                commands: [{ code: 'master_mode', value: comandoAlarme }]
+            };
+        } 
+        else if (target === 'portao') {
+            // O comando de RF deve ser enviado para o Hub Pai (EKAZA)
+            path = `/v1.0/devices/${TUYA_DEVICE_RF_ID}/commands`;
+            
+            const keyId = KEY_MAP[action] || '1';
+            
+            // Monta a string de comando oficial de RF baseada no ID do sub-dispositivo
+            const rfValueObj = {
+                control: "rf_send",
+                sub_id: TUYA_SUB_PORTAO_ID,
+                key_id: keyId
+            };
+
+            body = {
+                commands: [{ 
+                    code: 'ir_send', 
+                    value: JSON.stringify(rfValueObj) 
+                }]
+            };
+        } else {
+            return res.status(400).json({ success: false, message: 'Alvo inválido.' });
+        }
+
         const timestamp = Date.now();
         const nonce = crypto.randomBytes(8).toString('hex');
-
-        // Configuração exata baseada nos parâmetros do seu alarme:
-        // Se clicar em LIGAR (status true) -> envia 'arm'
-        // Se clicar em DESLIGAR (status false) -> envia 'disarmed'
-        const comandoAlarme = status ? 'arm' : 'disarmed';
-
-        const body = {
-            commands: [
-                { 
-                    code: 'master_mode', 
-                    value: comandoAlarme 
-                }
-            ]
-        };
-
         const stringToSign = buildStringToSign('POST', path, body);
         const signature = generateSignature(TUYA_ACCESS_ID, token, timestamp, nonce, stringToSign);
 
@@ -96,10 +122,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (response.data && response.data.success) {
             return res.status(200).json({ success: true });
         } else {
-            return res.status(500).json({ 
-                success: false, 
-                message: `Erro Tuya ${response.data.code}: ${response.data.msg}` 
-            });
+            return res.status(500).json({ success: false, message: `Erro Tuya: ${response.data.msg} (Código: ${response.data.code})` });
         }
     } catch (error: any) {
         return res.status(500).json({ success: false, message: error.message });
