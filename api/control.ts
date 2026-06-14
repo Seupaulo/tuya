@@ -1,22 +1,10 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 import * as crypto from 'crypto';
+import { IncomingMessage, ServerResponse } from 'http';
 
 const TUYA_ACCESS_ID = process.env.TUYA_ACCESS_ID || '';
 const TUYA_ACCESS_SECRET = process.env.TUYA_ACCESS_SECRET || '';
 const TUYA_DEVICE_ID = process.env.TUYA_DEVICE_ID || ''; // Alarme
-const TUYA_DEVICE_RF_ID = process.env.TUYA_DEVICE_RF_ID || ''; // Hub EKAZA Pai
-
-// ID do controle virtual do portão
-const TUYA_SUB_PORTAO_ID = "eb3cef69ba73dc1f8flvrs";
-
-// APENAS AS STRINGS EM BASE64 PURAS EXTRAÍDAS DOS SEUS LOGS
-const RF_CODES: Record<string, string> = {
-    abrir: "cyE3QVRrRE93SG5BamREUVVFNUE5WVFPd0U1QXprRERRRTdBVGtERFFFNUF6c0JPUU1OQVRrRE93SG5BamNCT1FNN0FlY0NPd0huQWpzQk9RTTVBdzBCT1FNTkFUa0REUkVOQVRrRE93RTVBdzBCT1FNTkFUa0RPd0U1QXcwQk9RTTdBUT09",
-    fechar: "UiBBTUFlTUNSZ0hqQWlvRDFRQXFBd3dCREFFcUF5b0REQUVNQWVNQ1JnSGpBZ3dCNHdKR0FlTUNSZ0hqQWd3QjR3SkdBZU1DREFIakFrWUI0d0lxQXd3QkRBSGpBZ3dCS2dOR0FlTUNEQUhqQWtZQjR3SkdBZU1DS2dNTUFzb0QxUUFNQVE9PQ==",
-    parar: "Y3lFN0FUa0RPd0huQWprRERRRTVBOVlBT3dFNUF6a0REUUU3QVRrRERRRTVBenNCT1FNTkFUa0RPd0huQWpzQk9RTTdBZWNDT3dIbkFqc0JPUU01QXcwQk9RTU5BVGtERFJFTkFUa0RPd0U1QXcwQk9RTU5BVGtET3dFNUF3MEJPUU03QVE9PQ==",
-    travar: "Q3lBTkFmOENRQUgvQXY4QzFBRC9BZzBCTFFIL0F2OENERUVORWY4Q1FBSC9BZzBCL3dJQUFmOENERFFIL0FrQUIvd0lOQWY4Q1FBSC9BZzBCL3dML0F0Z0FEUUgvQWtBQi93TC9BdGdBL3dJTkFRMEIvd0lOQWY4Q1FBSC9BZzBCL3dKQUFRPT0="
-};
 
 const TUYA_ENDPOINT = 'https://openapi.tuyaus.com';
 
@@ -37,92 +25,107 @@ function generateSignature(clientId: string, token: string, timestamp: number, n
     return crypto.createHmac('sha256', TUYA_ACCESS_SECRET).update(message, 'utf8').digest('hex').toUpperCase();
 }
 
-async function getAccessToken(): Promise<string> {
-    const path = '/v1.0/token?grant_type=1';
+async function tuyaRequest(method: string, path: string, body: any = {}): Promise<any> {
+    const token = path.includes('/v1.0/token') ? '' : await getAccessToken();
     const timestamp = Date.now();
     const nonce = crypto.randomBytes(8).toString('hex');
-    const stringToSign = buildStringToSign('GET', path);
-    const signature = generateSignature(TUYA_ACCESS_ID, '', timestamp, nonce, stringToSign);
+    const stringToSign = buildStringToSign(method, path, body);
+    const signature = generateSignature(TUYA_ACCESS_ID, token, timestamp, nonce, stringToSign);
 
-    const response = await axios.get(`${TUYA_ENDPOINT}${path}`, {
-        headers: {
-            client_id: TUYA_ACCESS_ID,
-            sign: signature,
-            t: timestamp.toString(),
-            sign_method: 'HMAC-SHA256',
-            nonce: nonce
-        }
-    });
+    const headers: Record<string, string> = {
+        client_id: TUYA_ACCESS_ID,
+        sign: signature,
+        t: timestamp.toString(),
+        sign_method: 'HMAC-SHA256',
+        nonce: nonce,
+        'Content-Type': 'application/json'
+    };
+    if (token) headers['access_token'] = token;
 
-    if (response.data && response.data.success) {
-        return response.data.result.access_token;
-    }
-    throw new Error(`Erro na Autenticação Tuya: ${response.data.msg}`);
+    const config: any = { method, url: `${TUYA_ENDPOINT}${path}`, headers };
+    if (method.toUpperCase() === 'POST') config.data = body;
+
+    const response = await axios(config);
+    return response.data;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+let cachedToken = '';
+async function getAccessToken(): Promise<string> {
+    if (cachedToken) return cachedToken;
+    const data = await tuyaRequest('GET', '/v1.0/token?grant_type=1');
+    if (data && data.success) {
+        cachedToken = data.result.access_token;
+        return cachedToken;
+    }
+    throw new Error(`Erro de autenticação Tuya: ${data.msg}`);
+}
+
+function getRequestBody(req: IncomingMessage): Promise<any> {
+    return new Promise((resolve, reject) => {
+        let body = '';
+        req.on('data', chunk => { body += chunk.toString(); });
+        req.on('end', () => {
+            try { resolve(body ? JSON.parse(body) : {}); } catch (e) { resolve({}); }
+        });
+    });
+}
+
+export default async function handler(req: IncomingMessage, res: ServerResponse) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    if (req.method === 'OPTIONS') return res.status(200).end();
-    if (req.method !== 'POST') return res.status(405).json({ success: false, message: 'Método não permitido.' });
+    if (req.method === 'OPTIONS') { res.statusCode = 200; return res.end(); }
+    if (req.method !== 'POST') {
+        res.statusCode = 405;
+        return res.end(JSON.stringify({ success: false, message: 'Método não permitido.' }));
+    }
 
-    const { target, action } = req.body; 
+    res.setHeader('Content-Type', 'application/json');
 
     try {
-        const token = await getAccessToken();
-        let path = '';
-        let body = {};
+        const reqBody = await getRequestBody(req);
+        const { target, action } = reqBody;
 
         if (target === 'alarme') {
-            path = `/v1.0/devices/${TUYA_DEVICE_ID}/commands`;
+            const path = `/v1.0/devices/${TUYA_DEVICE_ID}/commands`;
             const comandoAlarme = action === 'ligar' ? 'arm' : 'disarmed';
-            body = {
-                commands: [{ code: 'master_mode', value: comandoAlarme }]
-            };
-        } 
-        else if (target === 'portao') {
-            // ALTERAÇÃO DO ENDPOINT: Utiliza a rota oficial de comandos IR/RF remotos
-            path = `/v1.0/ir-remotes/${TUYA_DEVICE_RF_ID}/command`;
+            const data = await tuyaRequest('POST', path, { commands: [{ code: 'master_mode', value: comandoAlarme }] });
             
-            const codigoBase64 = RF_CODES[action];
-            if (!codigoBase64) {
-                return res.status(400).json({ success: false, message: 'Código RF não encontrado.' });
+            res.statusCode = data.success ? 200 : 500;
+            return res.end(JSON.stringify({ success: data.success, message: data.msg }));
+        } 
+        
+        if (target === 'portao') {
+            // Nome da cena que criamos no app do celular
+            const nomeCenaAlvo = `portao_${action}`;
+
+            // 1. Descobre a lista de Cenas vinculadas à conta Tuya
+            const listaCenas = await tuyaRequest('GET', '/v1.0/scenes');
+            if (!listaCenas.success || !listaCenas.result) {
+                res.statusCode = 500;
+                return res.end(JSON.stringify({ success: false, message: `Falha ao listar cenas: ${listaCenas.msg}` }));
             }
 
-            // O padrão clássico da API de controle remoto exige estritamente essa estrutura
-            body = {
-                remote_id: TUYA_SUB_PORTAO_ID,
-                code: codigoBase64
-            };
-        } else {
-            return res.status(400).json({ success: false, message: 'Alvo inválido.' });
-        }
-
-        const timestamp = Date.now();
-        const nonce = crypto.randomBytes(8).toString('hex');
-        const stringToSign = buildStringToSign('POST', path, body);
-        const signature = generateSignature(TUYA_ACCESS_ID, token, timestamp, nonce, stringToSign);
-
-        const response = await axios.post(`${TUYA_ENDPOINT}${path}`, body, {
-            headers: {
-                client_id: TUYA_ACCESS_ID,
-                access_token: token,
-                sign: signature,
-                t: timestamp.toString(),
-                sign_method: 'HMAC-SHA256',
-                nonce: nonce,
-                'Content-Type': 'application/json'
+            // 2. Procura a cena correspondente pelo nome correto
+            const cenaEncontrada = listaCenas.result.find((s: any) => s.name === nomeCenaAlvo);
+            if (!cenaEncontrada) {
+                res.statusCode = 404;
+                return res.end(JSON.stringify({ success: false, message: `Cena '${nomeCenaAlvo}' não encontrada no Smart Life.` }));
             }
-        });
 
-        if (response.data && response.data.success) {
-            return res.status(200).json({ success: true });
-        } else {
-            return res.status(500).json({ success: false, message: `Erro Tuya ${response.data.code}: ${response.data.msg}` });
+            // 3. Executa o gatilho da cena na nuvem Tuya
+            const disparo = await tuyaRequest('POST', `/v1.0/scenes/${cenaEncontrada.id}/trigger`);
+            
+            res.statusCode = disparo.success ? 200 : 500;
+            return res.end(JSON.stringify({ success: disparo.success, message: disparo.msg }));
         }
+
+        res.statusCode = 400;
+        return res.end(JSON.stringify({ success: false, message: 'Alvo inválido.' }));
+
     } catch (error: any) {
-        return res.status(500).json({ success: false, message: error.message });
+        res.statusCode = 500;
+        return res.end(JSON.stringify({ success: false, message: error.message }));
     }
 }
