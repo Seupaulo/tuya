@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home Control V2.2</title>
+    <title>Home Control V2.3</title>
+    <!-- VINCULA O MANIFESTO DO APLICATIVO -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#121214">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -114,14 +119,12 @@
             transform: scale(0.98);
         }
 
-        /* Cores cheias para os botões do Alarme */
         .btn-alarme-on { background-color: var(--success-green); color: #ffffff; border: none; }
         .btn-alarme-on:hover { background-color: #2da94c; }
 
         .btn-alarme-off { background-color: var(--danger-red); color: #ffffff; border: none; }
         .btn-alarme-off:hover { background-color: #d63128; }
 
-        /* Cores apenas nas fontes para o Portão */
         .color-green { color: var(--success-green); }
         .color-orange { color: var(--warning-orange); }
         .color-gray { color: var(--text-main); }
@@ -132,7 +135,6 @@
             border-color: #7c7c8a;
         }
 
-        /* Estado Visual de Feedback de Sucesso temporário */
         .btn-feedback-enviado {
             background-color: #232329 !important;
             color: var(--primary-blue) !important;
@@ -140,7 +142,6 @@
             box-shadow: 0 0 12px rgba(0, 122, 255, 0.2);
         }
 
-        /* Rodapé com botão Sair */
         footer {
             margin-top: 40px;
             width: 100%;
@@ -159,11 +160,7 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        .btn-sair:hover {
-            background-color: rgba(255, 59, 48, 0.1);
-        }
 
-        /* Modais Modernos */
         .modal {
             display: none;
             position: fixed;
@@ -262,7 +259,6 @@
         .btn-sim { background-color: var(--success-green); color: white; border: none; }
         .btn-nao { background-color: #29292e; color: var(--text-secondary); }
 
-        /* Responsividade para telas de Multimídia de carro (Landscape) */
         @media (min-width: 768px) or (orientation: landscape) and (max-height: 600px) {
             body { padding: 24px; }
             .container { max-width: 900px; grid-template-columns: 1fr 1fr; display: grid; gap: 24px; }
@@ -275,7 +271,7 @@
 
     <div class="main-content">
         <header>
-            <h1>Home Control<span>V2.2</span></h1>
+            <h1>Home Control<span>V2.3</span></h1>
         </header>
 
         <div class="container">
@@ -344,7 +340,6 @@
         let acaoPendente = null;
         let bloqueioTeclado = false;
 
-        // Mapeamento para recuperar o texto original do botão após o feedback
         const LABELS_ORIGINAIS = {
             'btn-alarme-ligar': 'Ligar',
             'btn-alarme-desligar': 'Desligar',
@@ -353,6 +348,13 @@
             'btn-portao-parar': 'Parar',
             'btn-portao-travar': 'Travar'
         };
+
+        // REGISTRA O SERVICE WORKER PARA PERMITIR A INSTALAÇÃO DO ATALHO
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').then(() => {
+                console.log('Service Worker Ativo.');
+            }).catch(err => console.log('Erro SW:', err));
+        }
 
         function solicitarAcao(target, action, mensagemConfirmacao = null) {
             if ((target === 'alarme' && action === 'desligar') || (target === 'portao' && action === 'abrir')) {
@@ -366,7 +368,7 @@
             
             if (mensagemConfirmacao) {
                 acaoPendente = { target, action };
-                document.getElementById("confirmMessage").innerText = mensagemConfirmacao;
+                document.getElementById("confirmMessage").innerText = mensajeConfirmacao;
                 document.getElementById("confirmModal").style.display = "flex";
             } else {
                 sendCommand(target, action);
@@ -395,7 +397,6 @@
 
         function validarPin() {
             if (bloqueioTeclado) return;
-            
             const display = document.getElementById("pinDisplay");
             
             if (pinAtual === PIN_CORRETO) {
@@ -404,11 +405,9 @@
                 }
                 fecharModal();
             } else {
-                // FEEDBACK DE ERRO MODERNO: Pisca em vermelho na tela por 1.5s
                 bloqueioTeclado = true;
                 display.classList.add("error-state");
                 display.innerText = "PIN INCORRETO";
-                
                 setTimeout(() => {
                     limparPin();
                     display.classList.remove("error-state");
@@ -417,7 +416,7 @@
             }
         }
 
-        function executarConfirmado() {
+        function ejecutarConfirmado() {
             document.getElementById("confirmModal").style.display = "none";
             if (acaoPendente) {
                 sendCommand(acaoPendente.target, acaoPendente.action);
@@ -435,17 +434,13 @@
             setTimeout(() => { window.history.back(); }, 300);
         }
 
-        // Função responsável por enviar o comando e aplicar o status de "ENVIADO!" no botão correto
         async function sendCommand(target, action) {
             const idBotao = `btn-${target}-${action}`;
             const botaoElemento = document.getElementById(idBotao);
             
-            // Ativa o feedback visual no botão de forma amigável
             if (botaoElemento) {
                 botaoElemento.classList.add("btn-feedback-enviado");
                 botaoElemento.innerText = "ENVIADO!";
-                
-                // Restaura o visual original após 2 segundos
                 setTimeout(() => {
                     botaoElemento.classList.remove("btn-feedback-enviado");
                     botaoElemento.innerText = LABELS_ORIGINAIS[idBotao] || "";
@@ -458,11 +453,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ target, action })
                 });
-                
                 const data = await response.json();
-                if (!data.success) {
-                    alert("Erro da nuvem: " + data.message);
-                }
+                if (!data.success) alert("Erro da nuvem: " + data.message);
             } catch (error) {
                 console.error("Erro na comunicação.");
             }
