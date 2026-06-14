@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home Control V2.3</title>
-    <!-- VINCULA O MANIFESTO DO APLICATIVO -->
+    <title>Home Control V2.3.1</title>
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#121214">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -271,7 +270,7 @@
 
     <div class="main-content">
         <header>
-            <h1>Home Control<span>V2.3</span></h1>
+            <h1>Home Control<span>V2.3.1</span></h1>
         </header>
 
         <div class="container">
@@ -349,7 +348,6 @@
             'btn-portao-travar': 'Travar'
         };
 
-        // REGISTRA O SERVICE WORKER PARA PERMITIR A INSTALAÇÃO DO ATALHO
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js').then(() => {
                 console.log('Service Worker Ativo.');
@@ -366,9 +364,10 @@
                 return;
             }
             
+            // CORREÇÃO AQUI: Variável unificada com o nome correto
             if (mensagemConfirmacao) {
                 acaoPendente = { target, action };
-                document.getElementById("confirmMessage").innerText = mensajeConfirmacao;
+                document.getElementById("confirmMessage").innerText = mensagemConfirmacao;
                 document.getElementById("confirmModal").style.display = "flex";
             } else {
                 sendCommand(target, action);
@@ -416,7 +415,7 @@
             }
         }
 
-        function ejecutarConfirmado() {
+        function executarConfirmado() {
             document.getElementById("confirmModal").style.display = "none";
             if (acaoPendente) {
                 sendCommand(acaoPendente.target, acaoPendente.action);
