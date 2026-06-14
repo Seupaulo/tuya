@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home Control V2.0</title>
+    <title>Home Control V2.1</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -106,6 +106,7 @@
             transition: background 0.2s, transform 0.1s;
             background-color: #29292e;
             border: 1px solid var(--border-color);
+            color: var(--text-main);
             -webkit-tap-highlight-color: transparent;
         }
 
@@ -113,11 +114,18 @@
             transform: scale(0.98);
         }
 
-        /* Cores de fonte baseadas no senso comum e alta legibilidade */
+        /* Cores cheias para os botões do Alarme */
+        .btn-alarme-on { background-color: var(--success-green); color: #ffffff; border: none; }
+        .btn-alarme-on:hover { background-color: #2da94c; }
+
+        .btn-alarme-off { background-color: var(--danger-red); color: #ffffff; border: none; }
+        .btn-alarme-off:hover { background-color: #d63128; }
+
+        /* Cores apenas nas fontes para o Portão */
         .color-green { color: var(--success-green); }
-        .color-red { color: var(--danger-red); }
         .color-orange { color: var(--warning-orange); }
         .color-gray { color: var(--text-main); }
+        .color-red { color: var(--danger-red); }
 
         button:hover {
             background-color: #323238;
@@ -145,10 +153,9 @@
         }
         .btn-sair:hover {
             background-color: rgba(255, 59, 48, 0.1);
-            border-color: var(--danger-red);
         }
 
-        /* Modal de Senha Clean */
+        /* Modais Modernos (Senha e Confirmação) */
         .modal {
             display: none;
             position: fixed;
@@ -162,7 +169,7 @@
             align-items: center;
         }
 
-        .pin-container {
+        .panel-container {
             background-color: var(--card-bg);
             border: 1px solid var(--border-color);
             border-radius: 16px;
@@ -170,9 +177,10 @@
             width: 90%;
             max-width: 360px;
             text-align: center;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.6);
         }
 
-        .pin-title {
+        .panel-title {
             font-size: 1.2rem;
             font-weight: 600;
             color: var(--text-main);
@@ -212,7 +220,6 @@
             color: var(--text-main);
         }
         .pin-btn:active { background-color: #29292e; }
-
         .pin-btn.clear { color: var(--danger-red); }
         .pin-btn.cancel { color: #7c7c8a; }
 
@@ -228,7 +235,16 @@
             letter-spacing: 0.5px;
             margin-top: 8px;
         }
-        .btn-confirmar:hover { background-color: #0062cc; }
+
+        /* Botões do Menu de Confirmação Rápida */
+        .confirm-flex {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-top: 12px;
+        }
+        .btn-sim { background-color: var(--success-green); color: white; border: none; }
+        .btn-nao { background-color: #29292e; color: var(--text-secondary); }
 
         /* Responsividade para telas de Multimídia de carro (Landscape) */
         @media (min-width: 768px) or (orientation: landscape) and (max-height: 600px) {
@@ -243,20 +259,18 @@
 
     <div class="main-content">
         <header>
-            <h1>Home Control<span>V2.0</span></h1>
+            <h1>Home Control<span>V2.1</span></h1>
         </header>
 
         <div class="container">
-            <!-- CARD DO ALARME -->
             <div class="card">
                 <h2>Central de Alarme</h2>
                 <div class="btn-group">
-                    <button class="color-green" onclick="solicitarAcao('alarme', 'ligar', 'Deseja LIGAR o Alarme?')">Ligar</button>
-                    <button class="color-red" onclick="solicitarAcao('alarme', 'desligar')">Desligar</button>
+                    <button class="btn-alarme-on" onclick="solicitarAcao('alarme', 'ligar', 'Deseja LIGAR o Alarme?')">Ligar</button>
+                    <button class="btn-alarme-off" onclick="solicitarAcao('alarme', 'desligar')">Desligar</button>
                 </div>
             </div>
 
-            <!-- CARD DO PORTÃO DA GARAGEM 1 -->
             <div class="card">
                 <h2>Portão Garagem 1</h2>
                 <div class="btn-group">
@@ -269,15 +283,13 @@
         </div>
     </div>
 
-    <!-- BOTÃO CENTRALIZADO PARA SAIR -->
     <footer>
         <button class="btn-sair" onclick="sairDoPainel()">Sair do Painel</button>
     </footer>
 
-    <!-- MODAL DE SENHA -->
     <div id="pinModal" class="modal">
-        <div class="pin-container">
-            <div class="pin-title">Digite o PIN de Acesso</div>
+        <div class="panel-container">
+            <div class="panel-title">Digite o PIN de Acesso</div>
             <div id="pinDisplay" class="pin-display"></div>
             
             <div class="pin-grid">
@@ -299,15 +311,25 @@
         </div>
     </div>
 
+    <div id="confirmModal" class="modal">
+        <div class="panel-container">
+            <div id="confirmMessage" class="panel-title">Deseja executar esta ação?</div>
+            <div class="confirm-flex">
+                <button class="btn-sim" onclick="executarConfirmado()">SIM</button>
+                <button class="btn-nao" onclick="fecharConfirmacao()">CANCELAR</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        const PIN_CORRETO = "1234"; // Mude sua senha de 4 dígitos aqui
+        const PIN_CORRETO = "1234"; // Altere sua senha de 4 dígitos aqui se quiser
 
         let pinAtual = "";
         let acaoPendente = null;
 
-        // Gerencia se a ação precisa de senha ou apenas de um pop-up de confirmação
+        // Gerencia se a ação abre teclado de senha ou a janela interna de confirmação
         function solicitarAcao(target, action, mensagemConfirmacao = null) {
-            // Caso 1: Ações críticas que exigem digitação de senha
+            // Ações críticas: Senha obrigatória
             if ((target === 'alarme' && action === 'desligar') || (target === 'portao' && action === 'abrir')) {
                 acaoPendente = { target, action };
                 pinAtual = "";
@@ -316,11 +338,11 @@
                 return;
             }
             
-            // Caso 2: Ações normais que pedem apenas confirmação Sim/Não
+            // Outras ações: Confirmação em tela estilo App
             if (mensagemConfirmacao) {
-                if (confirm(mensagemConfirmacao)) {
-                    sendCommand(target, action);
-                }
+                acaoPendente = { target, action };
+                document.getElementById("confirmMessage").innerText = mensagemConfirmacao;
+                document.getElementById("confirmModal").style.display = "flex";
             } else {
                 sendCommand(target, action);
             }
@@ -356,11 +378,22 @@
             }
         }
 
+        // Funções do Modal de Confirmação Integrado
+        function executarConfirmado() {
+            document.getElementById("confirmModal").style.display = "none";
+            if (acaoPendente) {
+                sendCommand(acaoPendente.target, acaoPendente.action);
+                acaoPendente = null;
+            }
+        }
+
+        function fecharConfirmacao() {
+            document.getElementById("confirmModal").style.display = "none";
+            acaoPendente = null;
+        }
+
         function sairDoPainel() {
-            // Tenta fechar a aba atual. Nota: navegadores só permitem fechar abas abertas via script,
-            // mas funciona como um ótimo atalho de encerramento em vários sistemas embarcados/multimídias.
             window.close();
-            // Alternativa caso a janela principal não feche: limpa o histórico ou volta
             setTimeout(() => { window.history.back(); }, 300);
         }
 
