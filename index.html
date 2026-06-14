@@ -3,17 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home Control</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <title>Home Control V2.0</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #0d1117;
-            --card-bg: #161b22;
-            --text-main: #f0f6fc;
-            --accent-blue: #00f0ff;
-            --accent-green: #39ff14;
-            --accent-red: #ff3131;
-            --border-color: #30363d;
+            --bg-color: #121214;
+            --card-bg: #1a1a1e;
+            --text-main: #ffffff;
+            --text-secondary: #c4c4cc;
+            --primary-blue: #007aff;
+            --danger-red: #ff3b30;
+            --success-green: #34c759;
+            --border-color: #29292e;
         }
 
         * {
@@ -21,33 +22,39 @@
             margin: 0;
             padding: 0;
             user-select: none;
+            font-family: 'Inter', sans-serif;
         }
 
         body {
-            font-family: 'Rajdhani', sans-serif;
             background-color: var(--bg-color);
             color: var(--text-main);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 20px;
+            padding: 24px;
         }
 
         header {
-            margin-bottom: 30px;
+            margin-bottom: 32px;
             text-align: center;
             width: 100%;
             max-width: 500px;
         }
 
         header h1 {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 2.2rem;
-            color: var(--accent-blue);
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-main);
+            letter-spacing: -0.5px;
+        }
+
+        header h1 span {
+            color: var(--primary-blue);
+            font-size: 1.2rem;
+            margin-left: 8px;
+            font-weight: 600;
+            vertical-align: middle;
         }
 
         .container {
@@ -55,85 +62,59 @@
             max-width: 500px;
             display: flex;
             flex-direction: column;
-            gap: 25px;
+            gap: 20px;
         }
 
         .card {
             background-color: var(--card-bg);
             border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 25px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-            transition: border-color 0.3s ease;
-        }
-
-        .card:hover {
-            border-color: var(--accent-blue);
+            border-radius: 12px;
+            padding: 24px;
         }
 
         .card h2 {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 1.3rem;
+            font-size: 1.1rem;
+            font-weight: 600;
             margin-bottom: 20px;
+            color: var(--text-secondary);
             text-transform: uppercase;
-            letter-spacing: 1px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 10px;
-            color: #8b949e;
+            letter-spacing: 0.5px;
         }
 
         .btn-group {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-
-        .btn-group.full-width {
-            grid-template-columns: 1fr;
+            gap: 12px;
         }
 
         button {
-            font-family: 'Orbitron', sans-serif;
             font-size: 1rem;
-            font-weight: 700;
-            padding: 16px;
+            font-weight: 600;
+            padding: 18px;
             border: none;
-            border-radius: 10px;
+            border-radius: 8px;
             cursor: pointer;
-            text-transform: uppercase;
-            transition: all 0.2s ease;
-            background-color: #21262d;
+            transition: background 0.2s, transform 0.1s;
+            background-color: #29292e;
             color: var(--text-main);
-            border: 1px solid var(--border-color);
+            -webkit-tap-highlight-color: transparent;
         }
 
         button:active {
             transform: scale(0.98);
         }
 
-        /* Estilos específicos dos botões baseados no tema Dolphin Mini */
-        .btn-on:hover {
-            background-color: rgba(57, 255, 20, 0.1);
-            color: var(--accent-green);
-            border-color: var(--accent-green);
-            box-shadow: 0 0 15px rgba(57, 255, 20, 0.2);
-        }
+        /* Cores limpas e de alta visibilidade */
+        .btn-on { background-color: var(--success-green); }
+        .btn-on:hover { background-color: #2da94c; }
 
-        .btn-off:hover {
-            background-color: rgba(255, 49, 49, 0.1);
-            color: var(--accent-red);
-            border-color: var(--accent-red);
-            box-shadow: 0 0 15px rgba(255, 49, 49, 0.2);
-        }
+        .btn-off { background-color: var(--danger-red); }
+        .btn-off:hover { background-color: #d63128; }
 
-        .btn-action:hover {
-            background-color: rgba(0, 240, 255, 0.1);
-            color: var(--accent-blue);
-            border-color: var(--accent-blue);
-            box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
-        }
+        .btn-action { background-color: #29292e; border: 1px solid var(--border-color); }
+        .btn-action:hover { background-color: #323238; border-color: #7c7c8a; }
 
-        /* Estilos do Modal de Senha */
+        /* Modal de Senha Clean */
         .modal {
             display: none;
             position: fixed;
@@ -141,100 +122,91 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(13, 17, 23, 0.95);
+            background-color: rgba(0, 0, 0, 0.85);
             z-index: 1000;
             justify-content: center;
             align-items: center;
-            padding: 20px;
         }
 
-        .pin-pad-container {
+        .pin-container {
             background-color: var(--card-bg);
             border: 1px solid var(--border-color);
-            border-radius: 20px;
-            padding: 30px;
-            width: 100%;
-            max-width: 340px;
+            border-radius: 16px;
+            padding: 32px;
+            width: 90%;
+            max-width: 360px;
             text-align: center;
-            box-shadow: 0 0 30px rgba(0, 240, 255, 0.1);
         }
 
         .pin-title {
-            font-family: 'Orbitron', sans-serif;
             font-size: 1.2rem;
-            color: var(--accent-blue);
-            margin-bottom: 20px;
-            text-transform: uppercase;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 24px;
         }
 
         .pin-display {
-            background-color: #0d1117;
+            background-color: #121214;
             border: 1px solid var(--border-color);
-            border-radius: 10px;
-            padding: 15px;
-            font-size: 2rem;
-            letter-spacing: 10px;
-            margin-bottom: 25px;
-            height: 65px;
-            color: var(--accent-blue);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 2.2rem;
+            letter-spacing: 12px;
+            margin-bottom: 24px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary-blue);
+            font-weight: 700;
         }
 
         .pin-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
+            gap: 12px;
+            margin-bottom: 20px;
         }
 
         .pin-btn {
-            font-size: 1.5rem;
-            padding: 18px;
-            border-radius: 50%;
-            aspect-ratio: 1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-color: #21262d;
+            font-size: 1.4rem;
+            font-weight: 600;
+            padding: 16px;
+            border-radius: 8px;
+            background-color: #202024;
+            border: 1px solid transparent;
         }
+        .pin-btn:active { background-color: #29292e; }
 
-        .pin-btn:hover {
-            border-color: var(--accent-blue);
-            color: var(--accent-blue);
-        }
+        .pin-btn.clear { color: var(--danger-red); }
+        .pin-btn.cancel { color: #7c7c8a; }
 
-        .pin-btn.clear {
-            color: var(--accent-red);
-            border-color: rgba(255, 49, 49, 0.3);
+        .btn-confirmar {
+            width: 100%;
+            background-color: var(--primary-blue);
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 700;
+            padding: 16px;
+            border-radius: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 8px;
         }
-        .pin-btn.clear:hover {
-            background-color: rgba(255, 49, 49, 0.1);
-            border-color: var(--accent-red);
-        }
+        .btn-confirmar:hover { background-color: #0062cc; }
 
-        .pin-btn.cancel {
-            color: #8b949e;
-        }
-
-        /* Otimizações para telas maiores e multimídia (Landscape) */
+        /* Responsividade para telas de Multimídia de carro (Landscape) */
         @media (min-width: 768px) or (orientation: landscape) and (max-height: 600px) {
-            body {
-                padding: 40px 20px;
-            }
-            .container {
-                max-width: 800px;
-                grid-template-columns: 1fr 1fr;
-                display: grid;
-            }
-            header {
-                max-width: 800px;
-                grid-column: span 2;
-            }
+            body { padding: 32px 24px; }
+            .container { max-width: 900px; grid-template-columns: 1fr 1fr; display: grid; gap: 24px; }
+            header { max-width: 900px; grid-column: span 2; margin-bottom: 16px; }
         }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>Home Control</h1>
+        <h1>Home Control<span>V2.0</span></h1>
     </header>
 
     <div class="container">
@@ -258,9 +230,10 @@
     </div>
 
     <div id="pinModal" class="modal">
-        <div class="pin-pad-container">
-            <div class="pin-title">Digite o PIN</div>
+        <div class="pin-container">
+            <div class="pin-title">Digite o PIN de Acesso</div>
             <div id="pinDisplay" class="pin-display"></div>
+            
             <div class="pin-grid">
                 <button class="pin-btn" onclick="pressNum('1')">1</button>
                 <button class="pin-btn" onclick="pressNum('2')">2</button>
@@ -271,29 +244,32 @@
                 <button class="pin-btn" onclick="pressNum('7')">7</button>
                 <button class="pin-btn" onclick="pressNum('8')">8</button>
                 <button class="pin-btn" onclick="pressNum('9')">9</button>
-                <button class="pin-btn cancel" onclick="fecharModal()">X</button>
+                <button class="pin-btn cancel" onclick="fecharModal()">ESC</button>
                 <button class="pin-btn" onclick="pressNum('0')">0</button>
                 <button class="pin-btn clear" onclick="limparPin()">⌫</button>
             </div>
+
+            <button class="btn-confirmar" onclick="validarPin()">Confirmar</button>
         </div>
     </div>
 
     <script>
-        // DIGITE A SUA SENHA DE 4 DÍGITOS AQUI
+        // ==========================================
+        // ALTERE SUA SENHA DE 4 DÍGITOS AQUI ABAIXO
+        // ==========================================
         const PIN_CORRETO = "1234"; 
 
         let pinAtual = "";
         let acaoPendente = null;
 
-        // Função que intercepta comandos que exigem senha
         function verificarSenha(target, action) {
-            // Se for ligar o alarme, fechar, parar ou travar o portão, executa direto sem senha
+            // Ações livres de senha
             if ((target === 'alarme' && action === 'ligar') || (target === 'portao' && action !== 'abrir')) {
                 sendCommand(target, action);
                 return;
             }
             
-            // Caso contrário (desarmar alarme ou abrir portão), abre o teclado numérico
+            // Requer senha (desarmar alarme ou abrir portão)
             acaoPendente = { target, action };
             pinAtual = "";
             document.getElementById("pinDisplay").innerText = "";
@@ -304,22 +280,6 @@
             if (pinAtual.length < 4) {
                 pinAtual += num;
                 document.getElementById("pinDisplay").innerText = "•".repeat(pinAtual.length);
-                
-                // Valida automaticamente ao digitar o 4º dígito
-                if (pinAtual === PIN_CORRETO) {
-                    setTimeout(() => {
-                        fecharModal();
-                        if (acaoPendente) {
-                            sendCommand(acaoPendente.target, acaoPendente.action);
-                        }
-                    }, 200);
-                } else if (pinAtual.length === 4) {
-                    // Errou a senha
-                    setTimeout(() => {
-                        alert("Senha Incorreta!");
-                        limparPin();
-                    }, 200);
-                }
             }
         }
 
@@ -334,10 +294,21 @@
             acaoPendente = null;
         }
 
-        // Função padrão de envio para o Backend da Vercel
+        // Função chamada ao clicar no botão maior de Confirmar
+        function validarPin() {
+            if (pinAtual === PIN_CORRETO) {
+                fecharModal();
+                if (acaoPendente) {
+                    sendCommand(acaoPendente.target, acaoPendente.action);
+                }
+            } else {
+                alert("Senha Incorreta!");
+                limparPin();
+            }
+        }
+
         async function sendCommand(target, action) {
             try {
-                // Altere para a URL correta da sua API se necessário
                 const response = await fetch('/api/control', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
