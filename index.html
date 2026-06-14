@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home Control V2.3.1</title>
+    <title>Home Control V2.4</title>
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#121214">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -49,7 +49,7 @@
         }
 
         header {
-            margin-bottom: 32px;
+            margin-bottom: 16px;
             text-align: center;
             width: 100%;
             max-width: 500px;
@@ -68,6 +68,32 @@
             margin-left: 8px;
             font-weight: 600;
             vertical-align: middle;
+        }
+
+        /* Botão de Instalar Atalho Estilizado */
+        .install-container {
+            display: none; /* Fica escondido por padrão e só aparece se a BYD permitir */
+            width: 100%;
+            max-width: 500px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .btn-instalar-app {
+            width: 100%;
+            background-color: rgba(0, 122, 255, 0.15);
+            border: 1px dashed var(--primary-blue);
+            color: var(--primary-blue);
+            font-size: 1rem;
+            padding: 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .btn-instalar-app:hover {
+            background-color: var(--primary-blue);
+            color: #ffffff;
         }
 
         .container {
@@ -262,6 +288,7 @@
             body { padding: 24px; }
             .container { max-width: 900px; grid-template-columns: 1fr 1fr; display: grid; gap: 24px; }
             header { max-width: 900px; grid-column: span 2; margin-bottom: 8px; }
+            .install-container { max-width: 900px; grid-column: span 2; margin-bottom: 12px; }
             footer { margin-top: 24px; }
         }
     </style>
@@ -270,8 +297,13 @@
 
     <div class="main-content">
         <header>
-            <h1>Home Control<span>V2.3.1</span></h1>
+            <h1>Home Control<span>V2.4</span></h1>
         </header>
+
+        <!-- BOTÃO DE CRIAR ATALHO FORÇADO -->
+        <div id="installArea" class="install-container">
+            <button class="btn-instalar-app" onclick="forcarInstalacaoAtalho()">➕ Adicionar Atalho na Multimídia</button>
+        </div>
 
         <div class="container">
             <div class="card">
@@ -338,6 +370,7 @@
         let pinAtual = "";
         let acaoPendente = null;
         let bloqueioTeclado = false;
+        let gatilhoInstalacao = null;
 
         const LABELS_ORIGINAIS = {
             'btn-alarme-ligar': 'Ligar',
@@ -354,6 +387,26 @@
             }).catch(err => console.log('Erro SW:', err));
         }
 
+        // CAPTURA O EVENTO OCULTO DO ANDROID DA BYD E MOSTRA O BOTÃO NA TELA
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            gatilhoInstalacao = e;
+            document.getElementById("installArea").style.display = "block";
+        });
+
+        function forcarInstalacaoAtalho() {
+            if (!gatilhoInstalacao) return;
+            // Abre o prompt nativo de instalação escondido no sistema
+            gatilhoInstalacao.prompt();
+            gatilhoInstalacao.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    // Se o usuário instalou, esconde o botão da tela
+                    document.getElementById("installArea").style.display = "none";
+                }
+                gatilhoInstalacao = null;
+            });
+        }
+
         function solicitarAcao(target, action, mensagemConfirmacao = null) {
             if ((target === 'alarme' && action === 'desligar') || (target === 'portao' && action === 'abrir')) {
                 acaoPendente = { target, action };
@@ -364,7 +417,6 @@
                 return;
             }
             
-            // CORREÇÃO AQUI: Variável unificada com o nome correto
             if (mensagemConfirmacao) {
                 acaoPendente = { target, action };
                 document.getElementById("confirmMessage").innerText = mensagemConfirmacao;
