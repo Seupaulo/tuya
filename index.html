@@ -14,6 +14,7 @@
             --primary-blue: #007aff;
             --danger-red: #ff3b30;
             --success-green: #34c759;
+            --warning-orange: #ff9500;
             --border-color: #29292e;
         }
 
@@ -33,6 +34,14 @@
             flex-direction: column;
             align-items: center;
             padding: 24px;
+            justify-content: space-between;
+        }
+
+        .main-content {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         header {
@@ -88,15 +97,15 @@
         }
 
         button {
-            font-size: 1rem;
-            font-weight: 600;
+            font-size: 1.1rem;
+            font-weight: 700;
             padding: 18px;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             transition: background 0.2s, transform 0.1s;
             background-color: #29292e;
-            color: var(--text-main);
+            border: 1px solid var(--border-color);
             -webkit-tap-highlight-color: transparent;
         }
 
@@ -104,15 +113,40 @@
             transform: scale(0.98);
         }
 
-        /* Cores limpas e de alta visibilidade */
-        .btn-on { background-color: var(--success-green); }
-        .btn-on:hover { background-color: #2da94c; }
+        /* Cores de fonte baseadas no senso comum e alta legibilidade */
+        .color-green { color: var(--success-green); }
+        .color-red { color: var(--danger-red); }
+        .color-orange { color: var(--warning-orange); }
+        .color-gray { color: var(--text-main); }
 
-        .btn-off { background-color: var(--danger-red); }
-        .btn-off:hover { background-color: #d63128; }
+        button:hover {
+            background-color: #323238;
+            border-color: #7c7c8a;
+        }
 
-        .btn-action { background-color: #29292e; border: 1px solid var(--border-color); }
-        .btn-action:hover { background-color: #323238; border-color: #7c7c8a; }
+        /* Rodapé com botão Sair */
+        footer {
+            margin-top: 40px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        .btn-sair {
+            background-color: #1a1a1e;
+            border: 1px solid var(--danger-red);
+            color: var(--danger-red);
+            font-size: 0.95rem;
+            font-weight: 600;
+            padding: 12px 32px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .btn-sair:hover {
+            background-color: rgba(255, 59, 48, 0.1);
+            border-color: var(--danger-red);
+        }
 
         /* Modal de Senha Clean */
         .modal {
@@ -175,6 +209,7 @@
             border-radius: 8px;
             background-color: #202024;
             border: 1px solid transparent;
+            color: var(--text-main);
         }
         .pin-btn:active { background-color: #29292e; }
 
@@ -197,38 +232,49 @@
 
         /* Responsividade para telas de Multimídia de carro (Landscape) */
         @media (min-width: 768px) or (orientation: landscape) and (max-height: 600px) {
-            body { padding: 32px 24px; }
+            body { padding: 24px; }
             .container { max-width: 900px; grid-template-columns: 1fr 1fr; display: grid; gap: 24px; }
-            header { max-width: 900px; grid-column: span 2; margin-bottom: 16px; }
+            header { max-width: 900px; grid-column: span 2; margin-bottom: 8px; }
+            footer { margin-top: 24px; }
         }
     </style>
 </head>
 <body>
 
-    <header>
-        <h1>Home Control<span>V2.0</span></h1>
-    </header>
+    <div class="main-content">
+        <header>
+            <h1>Home Control<span>V2.0</span></h1>
+        </header>
 
-    <div class="container">
-        <div class="card">
-            <h2>Central de Alarme</h2>
-            <div class="btn-group">
-                <button class="btn-on" onclick="verificarSenha('alarme', 'ligar')">Ligar</button>
-                <button class="btn-off" onclick="verificarSenha('alarme', 'desligar')">Desligar</button>
+        <div class="container">
+            <!-- CARD DO ALARME -->
+            <div class="card">
+                <h2>Central de Alarme</h2>
+                <div class="btn-group">
+                    <button class="color-green" onclick="solicitarAcao('alarme', 'ligar', 'Deseja LIGAR o Alarme?')">Ligar</button>
+                    <button class="color-red" onclick="solicitarAcao('alarme', 'desligar')">Desligar</button>
+                </div>
             </div>
-        </div>
 
-        <div class="card">
-            <h2>Portão Garagem 1</h2>
-            <div class="btn-group">
-                <button class="btn-action" onclick="verificarSenha('portao', 'abrir')">Abrir</button>
-                <button class="btn-action" onclick="sendCommand('portao', 'fechar')">Fechar</button>
-                <button class="btn-action" onclick="sendCommand('portao', 'parar')">Parar</button>
-                <button class="btn-action" onclick="sendCommand('portao', 'travar')">Travar</button>
+            <!-- CARD DO PORTÃO DA GARAGEM 1 -->
+            <div class="card">
+                <h2>Portão Garagem 1</h2>
+                <div class="btn-group">
+                    <button class="color-green" onclick="solicitarAcao('portao', 'abrir')">Abrir</button>
+                    <button class="color-orange" onclick="solicitarAcao('portao', 'fechar', 'Deseja FECHAR o Portão?')">Fechar</button>
+                    <button class="color-gray" onclick="solicitarAcao('portao', 'parar', 'Deseja PARAR o Portão?')">Parar</button>
+                    <button class="color-red" onclick="solicitarAcao('portao', 'travar', 'Deseja TRAVAR o Portão?')">Travar</button>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- BOTÃO CENTRALIZADO PARA SAIR -->
+    <footer>
+        <button class="btn-sair" onclick="sairDoPainel()">Sair do Painel</button>
+    </footer>
+
+    <!-- MODAL DE SENHA -->
     <div id="pinModal" class="modal">
         <div class="pin-container">
             <div class="pin-title">Digite o PIN de Acesso</div>
@@ -254,26 +300,30 @@
     </div>
 
     <script>
-        // ==========================================
-        // ALTERE SUA SENHA DE 4 DÍGITOS AQUI ABAIXO
-        // ==========================================
-        const PIN_CORRETO = "1234"; 
+        const PIN_CORRETO = "1234"; // Mude sua senha de 4 dígitos aqui
 
         let pinAtual = "";
         let acaoPendente = null;
 
-        function verificarSenha(target, action) {
-            // Ações livres de senha
-            if ((target === 'alarme' && action === 'ligar') || (target === 'portao' && action !== 'abrir')) {
-                sendCommand(target, action);
+        // Gerencia se a ação precisa de senha ou apenas de um pop-up de confirmação
+        function solicitarAcao(target, action, mensagemConfirmacao = null) {
+            // Caso 1: Ações críticas que exigem digitação de senha
+            if ((target === 'alarme' && action === 'desligar') || (target === 'portao' && action === 'abrir')) {
+                acaoPendente = { target, action };
+                pinAtual = "";
+                document.getElementById("pinDisplay").innerText = "";
+                document.getElementById("pinModal").style.display = "flex";
                 return;
             }
             
-            // Requer senha (desarmar alarme ou abrir portão)
-            acaoPendente = { target, action };
-            pinAtual = "";
-            document.getElementById("pinDisplay").innerText = "";
-            document.getElementById("pinModal").style.display = "flex";
+            // Caso 2: Ações normais que pedem apenas confirmação Sim/Não
+            if (mensagemConfirmacao) {
+                if (confirm(mensagemConfirmacao)) {
+                    sendCommand(target, action);
+                }
+            } else {
+                sendCommand(target, action);
+            }
         }
 
         function pressNum(num) {
@@ -294,7 +344,6 @@
             acaoPendente = null;
         }
 
-        // Função chamada ao clicar no botão maior de Confirmar
         function validarPin() {
             if (pinAtual === PIN_CORRETO) {
                 fecharModal();
@@ -305,6 +354,14 @@
                 alert("Senha Incorreta!");
                 limparPin();
             }
+        }
+
+        function sairDoPainel() {
+            // Tenta fechar a aba atual. Nota: navegadores só permitem fechar abas abertas via script,
+            // mas funciona como um ótimo atalho de encerramento em vários sistemas embarcados/multimídias.
+            window.close();
+            // Alternativa caso a janela principal não feche: limpa o histórico ou volta
+            setTimeout(() => { window.history.back(); }, 300);
         }
 
         async function sendCommand(target, action) {
