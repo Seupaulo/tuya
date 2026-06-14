@@ -6,13 +6,13 @@ const TUYA_ACCESS_ID = process.env.TUYA_ACCESS_ID || '';
 const TUYA_ACCESS_SECRET = process.env.TUYA_ACCESS_SECRET || '';
 const TUYA_DEVICE_ID = process.env.TUYA_DEVICE_ID || ''; // Alarme
 const TUYA_DEVICE_RF_ID = process.env.TUYA_DEVICE_RF_ID || ''; // Hub EKAZA Pai
-const TUYA_SUB_PORTAO_ID = process.env.TUYA_SUB_PORTAO_ID || ''; // Controle Virtual Filho
 
-const KEY_MAP: Record<string, string> = {
-    abrir: process.env.KEY_PORTAO_ABRIR || '1',
-    fechar: process.env.KEY_PORTAO_FECHAR || '2',
-    parar: process.env.KEY_PORTAO_PARAR || '3',
-    travar: process.env.KEY_PORTAO_TRAVAR || '4'
+// DICIONÁRIO DE SINAIS BRUTOS BASE64 EXTRAÍDOS DOS SEUS LOGS
+const RF_SIGNALS: Record<string, string> = {
+    abrir: "cyE3QVRrRE93SG5BamREUVVFNUE5WVFPd0U1QXprRERRRTdBVGtERFFFNUF6c0JPUU1OQVRrRE93SG5BanNCT1FNN0FlY0NPd0huQWpzQk9RTTVBdzBCT1FNTkFUa0REUkVOQVRrRE93RTVBdzBCT1FNTkFUa0RPd0U1QXcwQk9RTTdBUT09",
+    fechar: "UiBBTUFlTUNSZ0hqQWlvRDFRQXFBd3dCREFFcUF5b0REQUVNQWVNQ1JnSGpBZ3dCNHdKR0FlTUNSZ0hqQWd3QjR3SkdBZU1DREFIakFrWUI0d0lxQXd3QkRBSGpBZ3dCS2dOR0FlTUNEQUhqQWtZQjR3SkdBZU1DS2dNTUFzb0QxUUFNQVE9PQ==",
+    parar: "Y3lFN0FUa0RPd0huQWprRERRRTVBOVlBT3dFNUF6a0REUUU3QVRrRERRRTVBenNCT1FNTkFUa0RPd0huQWpzQk9RTTdBZWNDT3dIbkFqc0JPUU01QXcwQk9RTU5BVGtERFJFTkFUa0RPd0U1QXcwQk9RTU5BVGtET3dFNUF3MEJPUU03QVE9PQ==",
+    travar: "Q3lBTkFmOENRQUgvQXY4QzFBRC9BZzBCTFFIL0F2OENERUVORWY4Q1FBSC9BZzBCL3dKQUFmOENERFFIL0FrQUIvd0lOQWY4Q1FBSC9BZzBCL3dML0F0Z0FEUUgvQWtBQi93TC9BdGdBL3dJTkFRMEIvd0lOQWY4Q1FBSC9BZzBCL3dKQUFRPT0="
 };
 
 const TUYA_ENDPOINT = 'https://openapi.tuyaus.com';
@@ -24,18 +24,9 @@ function getContentHash(body: any): string {
     return crypto.createHash('sha256').update(JSON.stringify(body), 'utf8').digest('hex');
 }
 
-function buildStringToSign(method: string, path: string, query: Record<string, any> = {}, body: any = {}): string {
-    const httpMethod = method.toUpperCase();
+function buildStringToSign(method: string, path: string, body: any = {}): string {
     const contentHash = getContentHash(body);
-    
-    let sortedQueryStr = '';
-    const queryKeys = Object.keys(query).sort();
-    if (queryKeys.length > 0) {
-        sortedQueryStr = queryKeys.map((key) => `${key}=${query[key]}`).join('&');
-    }
-    
-    const url = sortedQueryStr ? `${path}?${sortedQueryStr}` : path;
-    return `${httpMethod}\n${contentHash}\n\n${url}`;
+    return `${method.toUpperCase()}\n${contentHash}\n\n${path}`;
 }
 
 function generateSignature(clientId: string, token: string, timestamp: number, nonce: string, stringToSign: string): string {
@@ -78,7 +69,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
         const token = await getAccessToken();
-        let method: 'GET' | 'POST' = 'POST';
         let path = '';
         let body = {};
 
@@ -90,27 +80,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             };
         } 
         else if (target === 'portao') {
-            const keyId = KEY_MAP[action] || '1';
+            path = `/v1.0/devices/${TUYA_DEVICE_RF_ID}/commands`;
             
-            // ROTA NATIVA DA TUYA PARA TRANSMISSÃO REMOTA DE RF (v2.0)
-            method = 'POST';
-            path = `/v1.0/ir-remotes/${TUYA_DEVICE_RF_ID}/rf/${TUYA_SUB_PORTAO_ID}/keys/${keyId}/transmission`;
-            body = {}; // Este endpoint da Tuya trabalha com o corpo vazio, passando os dados na URL
+            const base64Code = RF_SIGNALS[action];
+            if (!base64Code) {
+                return res.status(400).json({ success: false, message: 'Ação RF não mapeada.' });
+            }
+
+            // Montagem exata do JSON que a Tuya gerou no seu aplicativo
+            const valuePayload = {
+                rf_type: "sub_2g",
+                mode: 0,
+                key1: {
+                    times: 6,
+                    intervals: 0,
+                    delay: 0,
+                    code: base64Code
+                },
+                feq: 0,
+                rate: 0,
+                control: "rfstudy_send",
+                ver: "2"
+            };
+
+            body = {
+                commands: [{ 
+                    code: 'ir_send', 
+                    value: JSON.stringify(valuePayload) 
+                }]
+            };
         } else {
             return res.status(400).json({ success: false, message: 'Alvo inválido.' });
         }
 
         const timestamp = Date.now();
         const nonce = crypto.randomBytes(8).toString('hex');
-        
-        // Passamos o body vazio para o cálculo da assinatura caso seja o portão
-        const stringToSign = buildStringToSign(method, path, {}, body);
+        const stringToSign = buildStringToSign('POST', path, body);
         const signature = generateSignature(TUYA_ACCESS_ID, token, timestamp, nonce, stringToSign);
 
-        const response = await axios({
-            method: method,
-            url: `${TUYA_ENDPOINT}${path}`,
-            data: body,
+        const response = await axios.post(`${TUYA_ENDPOINT}${path}`, body, {
             headers: {
                 client_id: TUYA_ACCESS_ID,
                 access_token: token,
@@ -125,10 +133,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (response.data && response.data.success) {
             return res.status(200).json({ success: true });
         } else {
-            return res.status(500).json({ 
-                success: false, 
-                message: `Erro Tuya ${response.data.code}: ${response.data.msg}` 
-            });
+            return res.status(500).json({ success: false, message: `Erro Tuya ${response.data.code}: ${response.data.msg}` });
         }
     } catch (error: any) {
         return res.status(500).json({ success: false, message: error.message });
