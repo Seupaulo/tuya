@@ -7,12 +7,15 @@ const TUYA_ACCESS_SECRET = process.env.TUYA_ACCESS_SECRET || '';
 const TUYA_DEVICE_ID = process.env.TUYA_DEVICE_ID || ''; // Alarme
 const TUYA_DEVICE_RF_ID = process.env.TUYA_DEVICE_RF_ID || ''; // Hub EKAZA Pai
 
-// SINAIS LIMPOS EXTRAÍDOS DIRETAMENTE DO SEU LOG DE PUBLICAÇÃO (MÉTODO STRIP)
-const RF_PAYLOADS: Record<string, string> = {
-    abrir: '{"rf_type":"sub_2g","mode":0,"key1":{"times":6,"intervals":0,"delay":0,"code":"cyE3QVRrRE93SG5BamREUVVFNUE5WVFPd0U1QXprRERRRTdBVGtERFFFNUF6c0JPUU1OQVRrRE93SG5BanNCT1FNN0FlY0NPd0huQWpzQk9RTTVBdzBCT1FNTkFUa0REUkVOQVRrRE93RTVBdzBCT1FNTkFUa0RPd0U1QXcwQk9RTTdBUT09"},"feq":0,"rate":0,"control":"rfstudy_send","ver":"2"}',
-    fechar: '{"rf_type":"sub_2g","mode":0,"key1":{"times":6,"intervals":0,"delay":0,"code":"UiBBTUFlTUNSZ0hqQWlvRDFRQXFBd3dCREFFcUF5b0REQUVNQWVNQ1JnSGpBZ3dCNHdKR0FlTUNSZ0hqQWd3QjR3SkdBZU1DREFIakFrWUI0d0lxQXd3QkRBSGpBZ3dCS2dOR0FlTUNEQUhqQWtZQjR3SkdBZU1DS2dNTUFzb0QxUUFNQVE9PQ=="},"feq":0,"rate":0,"control":"rfstudy_send","ver":"2"}',
-    parar: '{"rf_type":"sub_2g","mode":0,"key1":{"times":6,"intervals":0,"delay":0,"code":"Y3lFN0FUa0RPd0huQWprRERRRTVBOVlBT3dFNUF6a0REUUU3QVRrRERRRTVBenNCT1FNTkFUa0RPd0huQWpzQk9RTTdBZWNDT3dIbkFqc0JPUU01QXcwQk9RTU5BVGtERFJFTkFUa0RPd0U1QXcwQk9RTU5BVGtET3dFNUF3MEJPUU03QVE9PQ=="},"feq":0,"rate":0,"control":"rfstudy_send","ver":"2"}',
-    travar: '{"rf_type":"sub_2g","mode":0,"key1":{"times":6,"intervals":0,"delay":0,"code":"Q3lBTkFmOENRQUgvQXY4QzFBRC9BZzBCTFFIL0F2OENERUVORWY4Q1FBSC9BZzBCL3dJQUFmOENERFFIL0FrQUIvd0lOQWY4Q1FBSC9BZzBCL3dML0F0Z0FEUUgvQWtBQi93TC9BdGdBL3dJTkFRMEIvd0lOQWY4Q1FBSC9BZzBCL3dKQUFRPT0="},"feq":0,"rate":0,"control":"rfstudy_send","ver":"2"}'
+// ID do controle virtual do portão
+const TUYA_SUB_PORTAO_ID = "eb3cef69ba73dc1f8flvrs";
+
+// APENAS AS STRINGS EM BASE64 PURAS EXTRAÍDAS DOS SEUS LOGS
+const RF_CODES: Record<string, string> = {
+    abrir: "cyE3QVRrRE93SG5BamREUVVFNUE5WVFPd0U1QXprRERRRTdBVGtERFFFNUF6c0JPUU1OQVRrRE93SG5BamNCT1FNN0FlY0NPd0huQWpzQk9RTTVBdzBCT1FNTkFUa0REUkVOQVRrRE93RTVBdzBCT1FNTkFUa0RPd0U1QXcwQk9RTTdBUT09",
+    fechar: "UiBBTUFlTUNSZ0hqQWlvRDFRQXFBd3dCREFFcUF5b0REQUVNQWVNQ1JnSGpBZ3dCNHdKR0FlTUNSZ0hqQWd3QjR3SkdBZU1DREFIakFrWUI0d0lxQXd3QkRBSGpBZ3dCS2dOR0FlTUNEQUhqQWtZQjR3SkdBZU1DS2dNTUFzb0QxUUFNQVE9PQ==",
+    parar: "Y3lFN0FUa0RPd0huQWprRERRRTVBOVlBT3dFNUF6a0REUUU3QVRrRERRRTVBenNCT1FNTkFUa0RPd0huQWpzQk9RTTdBZWNDT3dIbkFqc0JPUU01QXcwQk9RTU5BVGtERFJFTkFUa0RPd0U1QXcwQk9RTU5BVGtET3dFNUF3MEJPUU03QVE9PQ==",
+    travar: "Q3lBTkFmOENRQUgvQXY4QzFBRC9BZzBCTFFIL0F2OENERUVORWY4Q1FBSC9BZzBCL3dJQUFmOENERFFIL0FrQUIvd0lOQWY4Q1FBSC9BZzBCL3dML0F0Z0FEUUgvQWtBQi93TC9BdGdBL3dJTkFRMEIvd0lOQWY4Q1FBSC9BZzBCL3dKQUFRPT0="
 };
 
 const TUYA_ENDPOINT = 'https://openapi.tuyaus.com';
@@ -80,21 +83,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             };
         } 
         else if (target === 'portao') {
-            // Enviamos para o dispositivo EKAZA Pai usando a rota clássica desobstruída
-            path = `/v1.0/devices/${TUYA_DEVICE_RF_ID}/commands`;
+            // ALTERAÇÃO DO ENDPOINT: Utiliza a rota oficial de comandos IR/RF remotos
+            path = `/v1.0/ir-remotes/${TUYA_DEVICE_RF_ID}/command`;
             
-            const payloadBruto = RF_PAYLOADS[action];
-            if (!payloadBruto) {
-                return res.status(400).json({ success: false, message: 'Ação RF inválida.' });
+            const codigoBase64 = RF_CODES[action];
+            if (!codigoBase64) {
+                return res.status(400).json({ success: false, message: 'Código RF não encontrado.' });
             }
 
-            // A Tuya exige que, quando o valor de ir_send for uma string JSON estruturada, 
-            // ela não passe por dupla serialização. Convertemos em objeto direto para a API aceitar.
+            // O padrão clássico da API de controle remoto exige estritamente essa estrutura
             body = {
-                commands: [{ 
-                    code: 'ir_send', 
-                    value: JSON.parse(payloadBruto)
-                }]
+                remote_id: TUYA_SUB_PORTAO_ID,
+                code: codigoBase64
             };
         } else {
             return res.status(400).json({ success: false, message: 'Alvo inválido.' });
