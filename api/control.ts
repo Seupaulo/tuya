@@ -7,12 +7,12 @@ const TUYA_ACCESS_SECRET = process.env.TUYA_ACCESS_SECRET || '';
 const TUYA_DEVICE_ID = process.env.TUYA_DEVICE_ID || ''; // Alarme
 const TUYA_DEVICE_RF_ID = process.env.TUYA_DEVICE_RF_ID || ''; // Hub EKAZA Pai
 
-// DICIONÁRIO DE SINAIS BRUTOS BASE64 EXTRAÍDOS DOS SEUS LOGS
-const RF_SIGNALS: Record<string, string> = {
-    abrir: "cyE3QVRrRE93SG5BamREUVVFNUE5WVFPd0U1QXprRERRRTdBVGtERFFFNUF6c0JPUU1OQVRrRE93SG5BanNCT1FNN0FlY0NPd0huQWpzQk9RTTVBdzBCT1FNTkFUa0REUkVOQVRrRE93RTVBdzBCT1FNTkFUa0RPd0U1QXcwQk9RTTdBUT09",
-    fechar: "UiBBTUFlTUNSZ0hqQWlvRDFRQXFBd3dCREFFcUF5b0REQUVNQWVNQ1JnSGpBZ3dCNHdKR0FlTUNSZ0hqQWd3QjR3SkdBZU1DREFIakFrWUI0d0lxQXd3QkRBSGpBZ3dCS2dOR0FlTUNEQUhqQWtZQjR3SkdBZU1DS2dNTUFzb0QxUUFNQVE9PQ==",
-    parar: "Y3lFN0FUa0RPd0huQWprRERRRTVBOVlBT3dFNUF6a0REUUU3QVRrRERRRTVBenNCT1FNTkFUa0RPd0huQWpzQk9RTTdBZWNDT3dIbkFqc0JPUU01QXcwQk9RTU5BVGtERFJFTkFUa0RPd0U1QXcwQk9RTU5BVGtET3dFNUF3MEJPUU03QVE9PQ==",
-    travar: "Q3lBTkFmOENRQUgvQXY4QzFBRC9BZzBCTFFIL0F2OENERUVORWY4Q1FBSC9BZzBCL3dKQUFmOENERFFIL0FrQUIvd0lOQWY4Q1FBSC9BZzBCL3dML0F0Z0FEUUgvQWtBQi93TC9BdGdBL3dJTkFRMEIvd0lOQWY4Q1FBSC9BZzBCL3dKQUFRPT0="
+// DICIONÁRIO CONFIGURADO COMO STRINGS ESCAPADAS BRUTAS (EXATAMENTE COMO NO SEU LOG)
+const RF_PAYLOADS: Record<string, string> = {
+    abrir: '{"rf_type":"sub_2g","mode":0,"key1":{"times":6,"intervals":0,"delay":0,"code":"cyE3QVRrRE93SG5BamREUVVFNUE5WVFPd0U1QXprRERRRTdBVGtERFFFNUF6c0JPUU1OQVRrRE93SG5BanNCT1FNN0FlY0NPd0huQWpzQk9RTTVBdzBCT1FNTkFUa0REUkVOQVRrRE93RTVBdzBCT1FNTkFUa0RPd0U1QXcwQk9RTTdBUT09"},"feq":0,"rate":0,"control":"rfstudy_send","ver":"2"}',
+    fechar: '{"rf_type":"sub_2g","mode":0,"key1":{"times":6,"intervals":0,"delay":0,"code":"UiBBTUFlTUNSZ0hqQWlvRDFRQXFBd3dCREFFcUF5b0REQUVNQWVNQ1JnSGpBZ3dCNHdKR0FlTUNSZ0hqQWd3QjR3SkdBZU1DREFIakFrWUI0d0lxQXd3QkRBSGpBZ3dCS2dOR0FlTUNEQUhqQWtZQjR3SkdBZU1DS2dNTUFzb0QxUUFNQVE9PQ=="},"feq":0,"rate":0,"control":"rfstudy_send","ver":"2"}',
+    parar: '{"rf_type":"sub_2g","mode":0,"key1":{"times":6,"intervals":0,"delay":0,"code":"Y3lFN0FUa0RPd0huQWprRERRRTVBOVlBT3dFNUF6a0REUUU3QVRrRERRRTVBenNCT1FNTkFUa0RPd0huQWpzQk9RTTdBZWNDT3dIbkFqc0JPUU01QXcwQk9RTU5BVGtERFJFTkFUa0RPd0U1QXcwQk9RTU5BVGtET3dFNUF3MEJPUU03QVE9PQ=="},"feq":0,"rate":0,"control":"rfstudy_send","ver":"2"}',
+    travar: '{"rf_type":"sub_2g","mode":0,"key1":{"times":6,"intervals":0,"delay":0,"code":"Q3lBTkFmOENRQUgvQXY4QzFBRC9BZzBCTFFIL0F2OENERUVORWY4Q1FBSC9BZzBCL3dKQUFmOENERFFIL0FrQUIvd0lOQWY4Q1FBSC9BZzBCL3dML0F0Z0FEUUgvQWtBQi93TC9BdGdBL3dJTkFRMEIvd0lOQWY4Q1FBSC9BZzBCL3dKQUFRPT0="},"feq":0,"rate":0,"control":"rfstudy_send","ver":"2"}'
 };
 
 const TUYA_ENDPOINT = 'https://openapi.tuyaus.com';
@@ -82,31 +82,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         else if (target === 'portao') {
             path = `/v1.0/devices/${TUYA_DEVICE_RF_ID}/commands`;
             
-            const base64Code = RF_SIGNALS[action];
-            if (!base64Code) {
-                return res.status(400).json({ success: false, message: 'Ação RF não mapeada.' });
+            const stringBrutaPayload = RF_PAYLOADS[action];
+            if (!stringBrutaPayload) {
+                return res.status(400).json({ success: false, message: 'Ação RF inválida.' });
             }
 
-            // Montagem exata do JSON que a Tuya gerou no seu aplicativo
-            const valuePayload = {
-                rf_type: "sub_2g",
-                mode: 0,
-                key1: {
-                    times: 6,
-                    intervals: 0,
-                    delay: 0,
-                    code: base64Code
-                },
-                feq: 0,
-                rate: 0,
-                control: "rfstudy_send",
-                ver: "2"
-            };
-
+            // Injeta a string estática diretamente sem conversões extras do interpretador JSON
             body = {
                 commands: [{ 
                     code: 'ir_send', 
-                    value: JSON.stringify(valuePayload) 
+                    value: stringBrutaPayload
                 }]
             };
         } else {
