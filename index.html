@@ -67,11 +67,8 @@
         const txtStatus = document.getElementById(`${target}-status`);
         const dot = document.getElementById(`${target}-dot`);
 
-        // Bloqueia temporariamente todos os botões para evitar duplo clique
         botoes.forEach(btn => btn.disabled = true);
-        
-        const textoOriginalAlarme = txtStatus.innerText;
-        txtStatus.innerText = 'Enviando sinal...';
+        txtStatus.innerText = 'Transmitindo...';
         dot.style.background = '#f1c40f'; // Amarelo
 
         try {
@@ -87,7 +84,7 @@
                     txtStatus.innerText = action === 'ligar' ? 'Alarme Armado' : 'Alarme Desarmado';
                     dot.style.background = action === 'ligar' ? '#2ecc71' : '#e74c3c';
                 } else {
-                    txtStatus.innerText = `Sinal [${action.toUpperCase()}] Enviado!`;
+                    txtStatus.innerText = `Sinal [${action.toUpperCase()}] Transmitido!`;
                     dot.style.background = '#3498db';
                     setTimeout(() => {
                         txtStatus.innerText = 'Aguardando comando';
