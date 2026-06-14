@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home Control V2.1</title>
+    <title>Home Control V2.2</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -103,7 +103,7 @@
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
+            transition: all 0.2s ease;
             background-color: #29292e;
             border: 1px solid var(--border-color);
             color: var(--text-main);
@@ -132,6 +132,14 @@
             border-color: #7c7c8a;
         }
 
+        /* Estado Visual de Feedback de Sucesso temporário */
+        .btn-feedback-enviado {
+            background-color: #232329 !important;
+            color: var(--primary-blue) !important;
+            border-color: var(--primary-blue) !important;
+            box-shadow: 0 0 12px rgba(0, 122, 255, 0.2);
+        }
+
         /* Rodapé com botão Sair */
         footer {
             margin-top: 40px;
@@ -155,7 +163,7 @@
             background-color: rgba(255, 59, 48, 0.1);
         }
 
-        /* Modais Modernos (Senha e Confirmação) */
+        /* Modais Modernos */
         .modal {
             display: none;
             position: fixed;
@@ -201,6 +209,15 @@
             justify-content: center;
             color: var(--primary-blue);
             font-weight: 700;
+            transition: all 0.2s ease;
+        }
+
+        .pin-display.error-state {
+            color: var(--danger-red);
+            border-color: var(--danger-red);
+            background-color: rgba(255, 59, 48, 0.05);
+            font-size: 1.3rem;
+            letter-spacing: 1px;
         }
 
         .pin-grid {
@@ -236,7 +253,6 @@
             margin-top: 8px;
         }
 
-        /* Botões do Menu de Confirmação Rápida */
         .confirm-flex {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -259,25 +275,25 @@
 
     <div class="main-content">
         <header>
-            <h1>Home Control<span>V2.1</span></h1>
+            <h1>Home Control<span>V2.2</span></h1>
         </header>
 
         <div class="container">
             <div class="card">
                 <h2>Central de Alarme</h2>
                 <div class="btn-group">
-                    <button class="btn-alarme-on" onclick="solicitarAcao('alarme', 'ligar', 'Deseja LIGAR o Alarme?')">Ligar</button>
-                    <button class="btn-alarme-off" onclick="solicitarAcao('alarme', 'desligar')">Desligar</button>
+                    <button id="btn-alarme-ligar" class="btn-alarme-on" onclick="solicitarAcao('alarme', 'ligar', 'Deseja LIGAR o Alarme?')">Ligar</button>
+                    <button id="btn-alarme-desligar" class="btn-alarme-off" onclick="solicitarAcao('alarme', 'desligar')">Desligar</button>
                 </div>
             </div>
 
             <div class="card">
                 <h2>Portão Garagem 1</h2>
                 <div class="btn-group">
-                    <button class="color-green" onclick="solicitarAcao('portao', 'abrir')">Abrir</button>
-                    <button class="color-orange" onclick="solicitarAcao('portao', 'fechar', 'Deseja FECHAR o Portão?')">Fechar</button>
-                    <button class="color-gray" onclick="solicitarAcao('portao', 'parar', 'Deseja PARAR o Portão?')">Parar</button>
-                    <button class="color-red" onclick="solicitarAcao('portao', 'travar', 'Deseja TRAVAR o Portão?')">Travar</button>
+                    <button id="btn-portao-abrir" class="color-green" onclick="solicitarAcao('portao', 'abrir')">Abrir</button>
+                    <button id="btn-portao-fechar" class="color-orange" onclick="solicitarAcao('portao', 'fechar', 'Deseja FECHAR o Portão?')">Fechar</button>
+                    <button id="btn-portao-parar" class="color-gray" onclick="solicitarAcao('portao', 'parar', 'Deseja PARAR o Portão?')">Parar</button>
+                    <button id="btn-portao-travar" class="color-red" onclick="solicitarAcao('portao', 'travar', 'Deseja TRAVAR o Portão?')">Travar</button>
                 </div>
             </div>
         </div>
@@ -322,23 +338,32 @@
     </div>
 
     <script>
-        const PIN_CORRETO = "1234"; // Altere sua senha de 4 dígitos aqui se quiser
-
+        const PIN_CORRETO = "1234"; // Altere sua senha de 4 dígitos aqui
+        
         let pinAtual = "";
         let acaoPendente = null;
+        let bloqueioTeclado = false;
 
-        // Gerencia se a ação abre teclado de senha ou a janela interna de confirmação
+        // Mapeamento para recuperar o texto original do botão após o feedback
+        const LABELS_ORIGINAIS = {
+            'btn-alarme-ligar': 'Ligar',
+            'btn-alarme-desligar': 'Desligar',
+            'btn-portao-abrir': 'Abrir',
+            'btn-portao-fechar': 'Fechar',
+            'btn-portao-parar': 'Parar',
+            'btn-portao-travar': 'Travar'
+        };
+
         function solicitarAcao(target, action, mensagemConfirmacao = null) {
-            // Ações críticas: Senha obrigatória
             if ((target === 'alarme' && action === 'desligar') || (target === 'portao' && action === 'abrir')) {
                 acaoPendente = { target, action };
                 pinAtual = "";
+                document.getElementById("pinDisplay").classList.remove("error-state");
                 document.getElementById("pinDisplay").innerText = "";
                 document.getElementById("pinModal").style.display = "flex";
                 return;
             }
             
-            // Outras ações: Confirmação em tela estilo App
             if (mensagemConfirmacao) {
                 acaoPendente = { target, action };
                 document.getElementById("confirmMessage").innerText = mensagemConfirmacao;
@@ -349,6 +374,7 @@
         }
 
         function pressNum(num) {
+            if (bloqueioTeclado) return;
             if (pinAtual.length < 4) {
                 pinAtual += num;
                 document.getElementById("pinDisplay").innerText = "•".repeat(pinAtual.length);
@@ -364,21 +390,33 @@
             document.getElementById("pinModal").style.display = "none";
             pinAtual = "";
             acaoPendente = null;
+            bloqueioTeclado = false;
         }
 
         function validarPin() {
+            if (bloqueioTeclado) return;
+            
+            const display = document.getElementById("pinDisplay");
+            
             if (pinAtual === PIN_CORRETO) {
-                fecharModal();
                 if (acaoPendente) {
                     sendCommand(acaoPendente.target, acaoPendente.action);
                 }
+                fecharModal();
             } else {
-                alert("Senha Incorreta!");
-                limparPin();
+                // FEEDBACK DE ERRO MODERNO: Pisca em vermelho na tela por 1.5s
+                bloqueioTeclado = true;
+                display.classList.add("error-state");
+                display.innerText = "PIN INCORRETO";
+                
+                setTimeout(() => {
+                    limparPin();
+                    display.classList.remove("error-state");
+                    bloqueioTeclado = false;
+                }, 1500);
             }
         }
 
-        // Funções do Modal de Confirmação Integrado
         function executarConfirmado() {
             document.getElementById("confirmModal").style.display = "none";
             if (acaoPendente) {
@@ -397,7 +435,23 @@
             setTimeout(() => { window.history.back(); }, 300);
         }
 
+        // Função responsável por enviar o comando e aplicar o status de "ENVIADO!" no botão correto
         async function sendCommand(target, action) {
+            const idBotao = `btn-${target}-${action}`;
+            const botaoElemento = document.getElementById(idBotao);
+            
+            // Ativa o feedback visual no botão de forma amigável
+            if (botaoElemento) {
+                botaoElemento.classList.add("btn-feedback-enviado");
+                botaoElemento.innerText = "ENVIADO!";
+                
+                // Restaura o visual original após 2 segundos
+                setTimeout(() => {
+                    botaoElemento.classList.remove("btn-feedback-enviado");
+                    botaoElemento.innerText = LABELS_ORIGINAIS[idBotao] || "";
+                }, 2000);
+            }
+
             try {
                 const response = await fetch('/api/control', {
                     method: 'POST',
@@ -407,10 +461,10 @@
                 
                 const data = await response.json();
                 if (!data.success) {
-                    alert("Erro: " + data.message);
+                    alert("Erro da nuvem: " + data.message);
                 }
             } catch (error) {
-                alert("Erro ao conectar com o servidor.");
+                console.error("Erro na comunicação.");
             }
         }
     </script>
